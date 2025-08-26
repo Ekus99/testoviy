@@ -1,709 +1,176 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Опросник с Gun.js — Организатор / Участник / Результаты</title>
-
-<!-- Gun.js CDN -->
-<script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
-
-<style>
-  :root{
-    --bg:#0f1724;
-    --card:#0b1220;
-    --accent:#7c5cff;
-    --muted:#9aa4b2;
-    --glass: rgba(255,255,255,0.03);
-    --success:#22c55e;
-    --danger:#ff6b6b;
-    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-  }
-  *{box-sizing:border-box}
-  body{
-    margin:0;
-    background:linear-gradient(180deg,#071028 0%, #071827 60%);
-    color:#e6eef8;
-    min-height:100vh;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:28px;
-  }
-  .app{
-    width:100%;
-    max-width:1100px;
-    background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-    border-radius:14px;
-    box-shadow: 0 10px 30px rgba(2,6,23,0.6);
-    overflow:hidden;
-    display:grid;
-    grid-template-columns: 320px 1fr;
-    gap:0;
-  }
-  .sidebar{
-    background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-    padding:20px;
-    border-right:1px solid rgba(255,255,255,0.03);
-  }
-  .logo{
-    font-weight:700;
-    font-size:18px;
-    color:var(--accent);
-    display:flex;
-    gap:10px;
-    align-items:center;
-    margin-bottom:16px;
-  }
-  .tabs{display:flex;flex-direction:column;gap:10px}
-  .tab{
-    padding:12px;
-    border-radius:8px;
-    cursor:pointer;
-    color:var(--muted);
-    display:flex;
-    gap:10px;
-    align-items:center;
-  }
-  .tab.active{ background:linear-gradient(90deg, rgba(124,92,255,0.14), rgba(124,92,255,0.06)); color:#fff; box-shadow: inset 0 0 14px rgba(124,92,255,0.04); }
-  .main{
-    padding:24px;
-    min-height:560px;
-  }
-  .card{
-    background:var(--card);
-    padding:18px;
-    border-radius:12px;
-    margin-bottom:16px;
-    border:1px solid rgba(255,255,255,0.02);
-  }
-  label{display:block;font-size:13px;color:var(--muted); margin-bottom:8px}
-  input[type="text"], input[type="number"], textarea, select{
-    width:100%;
-    padding:10px 12px;
-    border-radius:8px;
-    border:1px solid rgba(255,255,255,0.04);
-    background:var(--glass);
-    color:inherit;
-    outline:none;
-    margin-bottom:12px;
-    font-size:14px;
-  }
-  textarea{min-height:80px; resize:vertical}
-  .row{display:flex; gap:12px}
-  .row .card{flex:1}
-  button{
-    padding:10px 14px;
-    border-radius:10px;
-    border:0;
-    cursor:pointer;
-    font-weight:600;
-    background:linear-gradient(90deg,var(--accent), #6bb2ff);
-    color:#061425;
-    box-shadow: 0 6px 18px rgba(124,92,255,0.12);
-  }
-  .ghost{
-    background:transparent;
-    border:1px solid rgba(255,255,255,0.06);
-    color:var(--muted);
-    box-shadow:none;
-  }
-  .small{padding:6px 8px; font-size:13px; border-radius:8px}
-  .codes{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-  .code-pill{background:rgba(255,255,255,0.03); padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.02); font-weight:600;}
-  .option-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
-  .option-row input[type="text"]{flex:1}
-  .flex-between{display:flex;align-items:center;justify-content:space-between}
-  .muted{color:var(--muted); font-size:13px}
-  .bar{
-    height:18px;border-radius:8px;background:rgba(255,255,255,0.04);overflow:hidden;display:block;
-  }
-  .bar > i{display:block;height:100%; background:linear-gradient(90deg,var(--accent), #6bb2ff); border-radius:8px;}
-  .center{display:flex;align-items:center;justify-content:center}
-  .danger{background:linear-gradient(90deg,var(--danger), #ff9c9c); color:#0b1016}
-  .success{background:linear-gradient(90deg,var(--success), #7ef39a); color:#062014}
-  footer{font-size:13px;color:var(--muted); margin-top:8px}
-  @media (max-width:880px){
-    .app{grid-template-columns:1fr; padding:12px}
-    .sidebar{order:2}
-  }
-</style>
+  <meta charset="UTF-8">
+  <title>Опросник с GUN.js</title>
+  <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f9f9fb; }
+    h2 { color: #333; }
+    .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+    .tab { padding: 10px 20px; border-radius: 8px; background: #eee; cursor: pointer; }
+    .tab.active { background: #4a90e2; color: white; }
+    .content { display: none; }
+    .content.active { display: block; }
+    input, button, textarea { padding: 8px; margin: 5px 0; border-radius: 6px; border: 1px solid #ccc; width: 100%; }
+    button { background: #4a90e2; color: white; border: none; cursor: pointer; }
+    button:hover { background: #357ab8; }
+    .option, .participant { display: flex; gap: 10px; margin-bottom: 5px; }
+    .results { margin-top: 15px; background: #fff; padding: 10px; border-radius: 8px; }
+  </style>
 </head>
 <body>
-<div class="app" role="application" aria-label="Опросник с Gun.js">
-  <aside class="sidebar">
-    <div class="logo">🔮 <span>Опросник (Gun.js)</span></div>
-    <div class="tabs" role="tablist" aria-label="tabs">
-      <div class="tab active" data-tab="organizer" role="tab">Организатор</div>
-      <div class="tab" data-tab="voter" role="tab">Участник</div>
-      <div class="tab" data-tab="results" role="tab">Итоги</div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="organizer">Организатор</div>
+    <div class="tab" data-tab="voter">Голосование</div>
+    <div class="tab" data-tab="results">Итоги</div>
+  </div>
+
+  <!-- Организатор -->
+  <div id="organizer" class="content active">
+    <h2>Создание опроса</h2>
+    <label>Вопрос:</label>
+    <input type="text" id="question">
+
+    <h3>Варианты ответа</h3>
+    <div id="options"></div>
+    <button onclick="addOption()">+ Добавить вариант</button>
+
+    <h3>Участники</h3>
+    <div id="participants"></div>
+    <button onclick="addParticipant()">+ Добавить участника</button>
+
+    <button onclick="createPoll()">Создать опрос</button>
+    <div id="pollLink"></div>
+  </div>
+
+  <!-- Голосование -->
+  <div id="voter" class="content">
+    <h2>Голосование</h2>
+    <input type="text" id="accessCode" placeholder="Введите код доступа">
+    <button onclick="enterPoll()">Войти</button>
+    <div id="votingArea" style="display:none;">
+      <h3 id="pollQuestion"></h3>
+      <div id="voteOptions"></div>
+      <button onclick="submitVote()">Проголосовать</button>
     </div>
+  </div>
 
-    <div style="margin-top:18px" class="muted">
-      Локальная демонстрация использует публичные peer'ы Gun для синхронизации.<br>
-      Для продакшна — добавьте собственный peer.
-    </div>
-    <footer>Версия demo • синхронизация: публичные peer'ы</footer>
-  </aside>
+  <!-- Итоги -->
+  <div id="results" class="content">
+    <h2>Итоги голосования</h2>
+    <div id="resultsArea"></div>
+  </div>
 
-  <main class="main">
-    <!-- ORGANIZER -->
-    <section id="organizerView" class="card" aria-hidden="false">
-      <h2>Создать опрос</h2>
-      <div style="margin-top:6px" class="muted">Заполните поля и нажмите «Создать опрос» — каждому участнику будет сгенерирован код доступа.</div>
+  <script>
+    const gun = Gun(['https://gun-manhattan.herokuapp.com/gun']);
+    const urlParams = new URLSearchParams(window.location.search);
+    const pollId = urlParams.get("poll");
 
-      <label>Вопрос</label>
-      <input id="q_question" type="text" placeholder="Например: Куда поехать в отпуск?" />
+    let currentPoll = null;
+    let myCode = null;
 
-      <label>Варианты (один вариант на строку)</label>
-      <textarea id="q_options" placeholder="Путешествие по Европе\nМайами\nОтдых в горах"></textarea>
-
-      <label>Участники (одна запись на строку — имя)</label>
-      <textarea id="q_participants" placeholder="Аня\nБорис\nВиктор"></textarea>
-
-      <label>Голоса на участника (целое число)</label>
-      <input id="q_votesPer" type="number" min="1" value="3" />
-
-      <div style="display:flex;gap:12px;margin-top:8px;align-items:center">
-        <button id="createPollBtn">Создать опрос</button>
-        <button id="loadFromUrlBtn" class="ghost">Загрузить по ссылке</button>
-        <button id="clearBtn" class="ghost small">Сбросить</button>
-      </div>
-
-      <div id="createdInfo" style="margin-top:12px;display:none" class="card">
-        <div class="flex-between">
-          <div>
-            <div style="font-weight:700" id="createdPollId"></div>
-            <div class="muted">Ссылка для доступа: <span id="createdLink"></span></div>
-          </div>
-          <div>
-            <button id="copyLink" class="small">Копировать ссылку</button>
-          </div>
-        </div>
-
-        <div style="margin-top:12px">
-          <div class="muted">Сгенерированные коды доступа (дайте участникам):</div>
-          <div id="codesList" class="codes"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- VOTER -->
-    <section id="voterView" class="card" aria-hidden="true" style="display:none">
-      <h2>Участник — войти по коду</h2>
-      <div class="muted">Введите код доступа, который прислал организатор.</div>
-
-      <label>Код доступа</label>
-      <input id="v_code" type="text" placeholder="например: A1B2C3" />
-      <div style="display:flex;gap:10px">
-        <button id="enterCodeBtn">Войти</button>
-        <button id="enterLinkBtn" class="ghost">Войти по ссылке</button>
-      </div>
-
-      <div id="voterPanel" style="margin-top:12px;display:none">
-        <div class="card">
-          <div class="flex-between">
-            <div>
-              <div id="voterName" style="font-weight:700"></div>
-              <div class="muted" id="voterVotesLeft"></div>
-            </div>
-            <div>
-              <button id="logoutBtn" class="ghost small">Выйти</button>
-            </div>
-          </div>
-
-          <div style="margin-top:12px" id="voterQuestionArea"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- RESULTS -->
-    <section id="resultsView" class="card" style="display:none" aria-hidden="true">
-      <h2>Общие итоги</h2>
-      <div class="muted">Результаты агрегируются в реальном времени со всех устройств.</div>
-
-      <div style="margin-top:12px" id="resultsArea"></div>
-      <div style="margin-top:10px" class="flex-between">
-        <div class="muted" id="lastSync">—</div>
-        <div>
-          <button id="refreshBtn" class="ghost small">Обновить</button>
-          <button id="resetVotes" class="danger small">Сбросить голоса (организатор)</button>
-        </div>
-      </div>
-    </section>
-  </main>
-</div>
-
-<script>
-/*
-  Описание модели данных в Gun:
-  gun.get('polls').get(pollId).put({
-    question: '...',
-    options: { optId1: {id:'optId1', text:'...', }, optId2: ... },
-    participants: { code1: { name:'Аня', assigned:3, votesGiven: {optId1:2, optId2:1} }, ... },
-    createdAt: timestamp
-  })
-*/
-
-// ====== Utils ======
-const randCode = (len=6) => {
-  const alph = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-  let s='';
-  for(let i=0;i<len;i++) s += alph.charAt(Math.floor(Math.random()*alph.length));
-  return s;
-}
-const uid = (n=8) => Math.random().toString(36).slice(2,2+n);
-const el = id => document.getElementById(id);
-
-// ====== Gun init ======
-const gun = Gun({
-  peers: [
-    'https://gun-manhattan.herokuapp.com/gun',
-    'https://gunjs.herokuapp.com/gun'
-  ]
-});
-// main polls collection
-const polls = gun.get('polls');
-
-// UI state
-let currentPollId = null;
-let currentParticipantCode = null;
-let currentParticipantName = null;
-
-// Tabs
-document.querySelectorAll('.tab').forEach(t=>{
-  t.addEventListener('click', ()=>{
-    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-    t.classList.add('active');
-    const tab = t.dataset.tab;
-    showTab(tab);
-  });
-});
-function showTab(name){
-  el('organizerView').style.display = name==='organizer' ? 'block':'none';
-  el('voterView').style.display = name==='voter' ? 'block':'none';
-  el('resultsView').style.display = name==='results' ? 'block':'none';
-}
-
-// ====== Organizer: create poll ======
-el('createPollBtn').addEventListener('click', async ()=>{
-  const question = el('q_question').value.trim();
-  const optionsText = el('q_options').value.trim();
-  const participantsText = el('q_participants').value.trim();
-  const votesPer = parseInt(el('q_votesPer').value, 10) || 1;
-
-  if(!question || !optionsText || !participantsText){
-    alert('Заполните вопрос, варианты и участников.');
-    return;
-  }
-
-  // prepare structures
-  const optionsArr = optionsText.split('\n').map(s=>s.trim()).filter(Boolean);
-  const participantsArr = participantsText.split('\n').map(s=>s.trim()).filter(Boolean);
-
-  // create IDs
-  const pollId = uid(10);
-  const options = {};
-  optionsArr.forEach((t,i)=>{
-    const id = 'o'+(i+1)+'_'+uid(4);
-    options[id] = { id, text: t };
-  });
-
-  // participants -> generate codes
-  const participants = {};
-  const codes = [];
-  participantsArr.forEach((name)=>{
-    const code = randCode(6);
-    const p = { name, assigned: votesPer, votesGiven: {} };
-    participants[code] = p;
-    codes.push({ code, name });
-  });
-
-  const pollObj = {
-    id: pollId,
-    question,
-    options,
-    participants,
-    createdAt: Date.now()
-  };
-
-  // store to Gun
-  polls.get(pollId).put(pollObj, ack=>{
-    if(ack.err){
-      console.error('gun put err', ack);
-      alert('Ошибка при создании опроса. Посмотрите консоль.');
-      return;
-    }
-    currentPollId = pollId;
-    showCreatedInfo(pollId, codes);
-    // update URL for sharing
-    const link = window.location.origin + window.location.pathname + '?poll=' + pollId;
-    el('createdLink').textContent = link;
-  });
-});
-
-el('clearBtn').addEventListener('click', ()=>{
-  if(confirm('Очистить поля формы?')) {
-    el('q_question').value='';
-    el('q_options').value='';
-    el('q_participants').value='';
-    el('q_votesPer').value='3';
-    el('createdInfo').style.display='none';
-  }
-});
-
-// load pollId from URL if present
-function pollIdFromUrl(){
-  const u = new URL(window.location.href);
-  return u.searchParams.get('poll');
-}
-el('loadFromUrlBtn').addEventListener('click', ()=>{
-  const p = pollIdFromUrl();
-  if(p){
-    loadPollToOrganizer(p);
-  } else {
-    alert('В URL нет параметра poll. Пример: ?poll=abcd123');
-  }
-});
-
-el('copyLink').addEventListener('click', ()=>{
-  const link = el('createdLink').textContent;
-  if(link){
-    navigator.clipboard?.writeText(link).then(()=>alert('Ссылка скопирована'));
-  }
-});
-
-function showCreatedInfo(pollId, codes){
-  el('createdInfo').style.display = 'block';
-  el('createdPollId').textContent = 'Poll ID: ' + pollId;
-  el('createdLink').textContent = window.location.origin + window.location.pathname + '?poll=' + pollId;
-  const codesList = el('codesList');
-  codesList.innerHTML = '';
-  codes.forEach(c=>{
-    const pill = document.createElement('div');
-    pill.className = 'code-pill';
-    pill.textContent = `${c.name} — ${c.code}`;
-    codesList.appendChild(pill);
-  });
-  // subscribe to poll updates to reflect live
-  subscribeToPoll(pollId);
-}
-
-// load poll for organizer to show existing codes
-function loadPollToOrganizer(pollId){
-  polls.get(pollId).once(data=>{
-    if(!data){
-      alert('Опрос не найден.');
-      return;
-    }
-    currentPollId = pollId;
-    el('createdInfo').style.display='block';
-    el('createdPollId').textContent = 'Poll ID: ' + pollId;
-    el('createdLink').textContent = window.location.origin + window.location.pathname + '?poll=' + pollId;
-    // show codes
-    const codes = [];
-    if(data.participants){
-      Object.keys(data.participants).forEach(code=>{
-        codes.push({ code, name: data.participants[code].name, assigned: data.participants[code].assigned});
-      });
-    }
-    const codesList = el('codesList');
-    codesList.innerHTML = '';
-    codes.forEach(c=>{
-      const pill = document.createElement('div');
-      pill.className = 'code-pill';
-      pill.textContent = `${c.name} — ${c.code} (${c.assigned} гол.)`;
-      codesList.appendChild(pill);
+    // Переключение вкладок
+    document.querySelectorAll(".tab").forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+        document.querySelectorAll(".content").forEach(c => c.classList.remove("active"));
+        tab.classList.add("active");
+        document.getElementById(tab.dataset.tab).classList.add("active");
+      };
     });
-    subscribeToPoll(pollId);
-  });
-}
 
-// ====== Subscribe to poll updates (used by organizer & results) ======
-let pollSub = null;
-function subscribeToPoll(pollId){
-  if(pollSub && pollSub.off) pollSub.off();
-  pollSub = polls.get(pollId).on((data, key)=>{
-    // update results area and organizer codes if open
-    renderResults(data);
-    // update organizer codes list if organizer view active
-    if(document.querySelector('.tab.active').dataset.tab === 'organizer'){
-      if(data && data.participants){
-        const codesList = el('codesList');
-        const arr = Object.keys(data.participants).map(code=>({ code, ...data.participants[code] }));
-        codesList.innerHTML = '';
-        arr.forEach(p=>{
-          const pill = document.createElement('div');
-          pill.className = 'code-pill';
-          pill.textContent = `${p.name} — ${p.code || p.name} (${p.assigned} гол.)`;
-          codesList.appendChild(pill);
-        });
-      }
+    // Добавление вариантов
+    function addOption() {
+      const div = document.createElement("div");
+      div.className = "option";
+      div.innerHTML = `<input type="text" placeholder="Вариант ответа">`;
+      document.getElementById("options").appendChild(div);
     }
-    // update current voter UI if logged in
-    if(currentParticipantCode && currentPollId === pollId){
-      polls.get(pollId).once(d=>{
-        populateVoterPanel(d, currentParticipantCode);
+
+    // Добавление участников
+    function addParticipant() {
+      const div = document.createElement("div");
+      div.className = "participant";
+      div.innerHTML = `<input type="text" placeholder="Имя"> <input type="number" placeholder="Голоса">`;
+      document.getElementById("participants").appendChild(div);
+    }
+
+    // Создание опроса
+    function createPoll() {
+      const question = document.getElementById("question").value;
+      const options = [...document.querySelectorAll("#options input")].map(o => o.value).filter(v => v);
+      const participants = [...document.querySelectorAll("#participants .participant")].map(p => {
+        const [name, votes] = p.querySelectorAll("input");
+        return { name: name.value, votes: +votes.value, code: Math.random().toString(36).substring(2, 8) };
       });
+
+      const newPollId = Math.random().toString(36).substring(2, 10);
+      gun.get("polls").get(newPollId).put({ question, options, participants });
+
+      let codes = participants.map(p => `${p.name}: ${p.code} (${p.votes} голосов)`).join("<br>");
+      document.getElementById("pollLink").innerHTML = `
+        <p>Ссылка на опрос: <a href="?poll=${newPollId}">${window.location.origin}${window.location.pathname}?poll=${newPollId}</a></p>
+        <p><b>Коды доступа:</b><br>${codes}</p>`;
     }
-    el('lastSync').textContent = 'Последняя синхронизация: ' + new Date().toLocaleTimeString();
-  });
-}
 
-// ====== Voter: enter code ======
-el('enterCodeBtn').addEventListener('click', ()=>{
-  const code = el('v_code').value.trim().toUpperCase();
-  if(!code) { alert('Введите код.'); return; }
-  const pid = pollIdFromUrl();
-  if(!pid && !currentPollId){
-    alert('Невозможно определить Poll ID. Загрузите опрос в разделе Организатор или откройте ссылку с ?poll=...');
-    return;
-  }
-  const pollId = pid || currentPollId;
-  attemptEnterAsParticipant(pollId, code);
-});
-el('enterLinkBtn').addEventListener('click', ()=>{
-  const pid = pollIdFromUrl();
-  if(!pid) { alert('В URL нет poll=...'); return; }
-  const code = prompt('Введите ваш код доступа');
-  if(code) attemptEnterAsParticipant(pid, code.trim().toUpperCase());
-});
-el('logoutBtn').addEventListener('click', ()=>{
-  if(confirm('Выйти?')) {
-    currentParticipantCode = null;
-    currentParticipantName = null;
-    el('voterPanel').style.display = 'none';
-    el('v_code').value = '';
-  }
-});
-
-function attemptEnterAsParticipant(pollId, code){
-  polls.get(pollId).once(data=>{
-    if(!data){
-      alert('Опрос не найден.');
-      return;
-    }
-    const parts = data.participants || {};
-    if(!parts[code]){
-      alert('Неверный код доступа. Проверьте код у организатора.');
-      return;
-    }
-    // success
-    currentPollId = pollId;
-    currentParticipantCode = code;
-    currentParticipantName = parts[code].name;
-    // show panel
-    el('voterPanel').style.display = 'block';
-    el('voterName').textContent = parts[code].name;
-    // subscribe
-    subscribeToPoll(pollId);
-    // show question & options
-    populateVoterPanel(data, code);
-  });
-}
-
-function populateVoterPanel(pollData, code){
-  if(!pollData) return;
-  const assigned = pollData.participants?.[code]?.assigned || 0;
-  const votesGiven = pollData.participants?.[code]?.votesGiven || {};
-  // compute used
-  let used = 0;
-  Object.values(votesGiven).forEach(v=> used += Number(v || 0));
-  const left = Math.max(0, assigned - used);
-  el('voterVotesLeft').textContent = `Всего: ${assigned} • Проголосовано: ${used} • Осталось: ${left}`;
-  // render options with inputs
-  const area = el('voterQuestionArea');
-  area.innerHTML = '';
-  const q = document.createElement('div');
-  q.innerHTML = `<div style="font-weight:700">${pollData.question}</div><div class="muted" style="margin-top:6px">Распределите ваши голоса между вариантами (сумма не должна превышать ${assigned}).</div>`;
-  area.appendChild(q);
-
-  const form = document.createElement('div');
-  form.style.marginTop='12px';
-  Object.keys(pollData.options||{}).forEach(optId=>{
-    const opt = pollData.options[optId];
-    const row = document.createElement('div');
-    row.className = 'option-row';
-    const label = document.createElement('div');
-    label.style.flex='1';
-    label.innerHTML = `<div style="font-weight:600">${opt.text}</div><div class="muted" style="font-size:13px">ID: ${optId}</div>`;
-    const input = document.createElement('input');
-    input.type='number';
-    input.min='0';
-    input.value = Number(votesGiven?.[optId] || 0);
-    input.style.width='86px';
-    input.dataset.opt = optId;
-    row.appendChild(label);
-    row.appendChild(input);
-    form.appendChild(row);
-  });
-  // action buttons
-  const btnWrap = document.createElement('div');
-  btnWrap.style.display='flex';
-  btnWrap.style.gap='8px';
-  btnWrap.style.marginTop='12px';
-  const submitBtn = document.createElement('button');
-  submitBtn.textContent = 'Проголосовать';
-  const previewBtn = document.createElement('button');
-  previewBtn.className='ghost';
-  previewBtn.textContent='Предпросмотр';
-  btnWrap.appendChild(submitBtn);
-  btnWrap.appendChild(previewBtn);
-  form.appendChild(btnWrap);
-  area.appendChild(form);
-
-  previewBtn.addEventListener('click', ()=>{
-    const entries = Array.from(form.querySelectorAll('input[type=number]')).map(i=>({opt:i.dataset.opt, val: Number(i.value || 0)}));
-    const sum = entries.reduce((s,e)=>s+e.val,0);
-    alert('Сумма голосов: ' + sum + '. Осталось: ' + (assigned - sum));
-  });
-
-  submitBtn.addEventListener('click', ()=>{
-    // collect and validate
-    const entries = Array.from(form.querySelectorAll('input[type=number]')).map(i=>({opt:i.dataset.opt, val: Math.max(0, Math.floor(Number(i.value || 0)))}));
-    const sum = entries.reduce((s,e)=>s+e.val,0);
-    if(sum > assigned){
-      alert(`Нельзя потратить больше голосов, чем вам назначено (${assigned}). Сейчас у вас ${sum}.`);
-      return;
-    }
-    // write votesGiven for this participant
-    const votesGivenObj = {};
-    entries.forEach(e => { if(e.val>0) votesGivenObj[e.opt] = e.val; });
-    // set participant.votesGiven in Gun
-    const base = polls.get(currentPollId).get('participants').get(currentParticipantCode);
-    base.put({ ... (pollData.participants?.[currentParticipantCode] || {}), votesGiven: votesGivenObj }, ack=>{
-      if(ack.err) {
-        alert('Ошибка сохранения голосов.');
-        console.error(ack);
-      } else {
-        alert('Спасибо — ваш голос учтён.');
-        // update local UI display using latest data
-        polls.get(currentPollId).once(d=> populateVoterPanel(d, currentParticipantCode));
-        // switch to results tab maybe
-      }
-    });
-  });
-}
-
-// ====== Results rendering ======
-function renderResults(pollData){
-  const area = el('resultsArea');
-  if(!pollData){
-    area.innerHTML = '<div class="muted">Опрос не выбран или не существует.</div>';
-    return;
-  }
-  // show question
-  let html = `<div style="font-weight:700">${pollData.question}</div><div class="muted" style="margin-top:6px">Создан: ${new Date(pollData.createdAt || Date.now()).toLocaleString()}</div>`;
-  // aggregate totals by options
-  const totals = {};
-  Object.keys(pollData.options || {}).forEach(oid => totals[oid]=0);
-  const participants = pollData.participants || {};
-  Object.keys(participants).forEach(code=>{
-    const p = participants[code];
-    if(p && p.votesGiven){
-      Object.keys(p.votesGiven).forEach(oid=>{
-        const v = Number(p.votesGiven[oid] || 0);
-        if(!totals[oid]) totals[oid]=0;
-        totals[oid]+=v;
-      });
-    }
-  });
-
-  // total sum
-  const totalSum = Object.values(totals).reduce((s,v)=>s+v,0);
-
-  html += '<div style="margin-top:12px">';
-  Object.keys(pollData.options || {}).forEach(oid=>{
-    const opt = pollData.options[oid];
-    const val = totals[oid] || 0;
-    const pct = totalSum ? Math.round(val/totalSum*100) : 0;
-    html += `
-      <div style="margin-bottom:10px">
-        <div class="flex-between" style="gap:10px">
-          <div style="font-weight:600">${opt.text}</div>
-          <div class="muted">${val} голосов • ${pct}%</div>
-        </div>
-        <div class="bar" aria-hidden="true"><i style="width:${pct}%;"></i></div>
-      </div>
-    `;
-  });
-  html += '</div>';
-
-  // show participants & breakdown
-  html += '<div style="margin-top:12px" class="card">';
-  html += '<div style="font-weight:700;margin-bottom:6px">Участники и распределение</div>';
-  html += '<div class="muted">Список участников и сколько проголосовали</div>';
-  html += '<div style="margin-top:8px">';
-  Object.keys(participants).forEach(code=>{
-    const p = participants[code];
-    const used = p.votesGiven ? Object.values(p.votesGiven).reduce((s,v)=>s+Number(v),0) : 0;
-    html += `<div style="margin-bottom:8px"><strong>${p.name}</strong> — назначено: ${p.assigned}, проголосовано: ${used} <span class="muted">[${code}]</span></div>`;
-    if(p.votesGiven){
-      html += '<div class="muted" style="margin-left:8px">';
-      Object.keys(p.votesGiven).forEach(oid=>{
-        const t = pollData.options?.[oid]?.text || oid;
-        html += `${t}: ${p.votesGiven[oid]}; `;
-      });
-      html += '</div>';
-    }
-  });
-  html += '</div></div>';
-
-  area.innerHTML = html;
-}
-
-// manual refresh
-el('refreshBtn').addEventListener('click', ()=>{
-  if(!currentPollId) return alert('Poll ID не выбран.');
-  polls.get(currentPollId).once(data=>{
-    renderResults(data);
-  });
-});
-
-// reset votes (organizer action)
-el('resetVotes').addEventListener('click', ()=>{
-  if(!currentPollId) return alert('Poll ID не выбран.');
-  if(!confirm('Сбросить все голоса (удалить votesGiven у всех участников)?')) return;
-  // fetch poll and remove votesGiven subfield
-  polls.get(currentPollId).once(poll=>{
-    if(!poll || !poll.participants) return alert('Нет участников или опрос не найден.');
-    // for each participant, set votesGiven to {}
-    Object.keys(poll.participants).forEach(code=>{
-      polls.get(currentPollId).get('participants').get(code).put({ ...poll.participants[code], votesGiven: {} });
-    });
-    alert('Голоса сброшены.');
-  });
-});
-
-// If URL contains poll=, try to load it (useful when opening link)
-window.addEventListener('load', ()=>{
-  const pid = pollIdFromUrl();
-  if(pid){
-    currentPollId = pid;
-    // pre-load to organizer and results
-    polls.get(pid).once(data=>{
-      if(!data){
-        // not found yet
-        document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-        document.querySelector('.tab[data-tab="voter"]').classList.add('active');
-        showTab('voter');
-        el('voterPanel').style.display='none';
+    // Вход голосующего
+    function enterPoll() {
+      if (!pollId) {
+        alert("Нет параметра poll в URL!");
         return;
       }
-      // If we opened via link, show results tab by default
-      document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-      document.querySelector('.tab[data-tab="voter"]').classList.add('active');
-      showTab('voter');
-      // keep subscriber for live updates
-      subscribeToPoll(pid);
-    });
-  }
-});
+      const code = document.getElementById("accessCode").value.trim();
+      myCode = code;
 
-// Helper: when poll created, subscribe
-// There's already subscribe in create flow
+      gun.get("polls").get(pollId).once(poll => {
+        if (!poll) { alert("Опрос не найден"); return; }
+        currentPoll = poll;
+        const participant = poll.participants.find(p => p.code === code);
+        if (!participant) { alert("Неверный код"); return; }
 
-// Accessibility: show organizer loaded poll via "loadFromUrlBtn" if poll in URL
-</script>
+        document.getElementById("votingArea").style.display = "block";
+        document.getElementById("pollQuestion").innerText = poll.question;
+
+        const voteOptions = document.getElementById("voteOptions");
+        voteOptions.innerHTML = "";
+        poll.options.forEach(opt => {
+          voteOptions.innerHTML += `<label>${opt}: <input type="number" min="0" max="${participant.votes}" data-option="${opt}" value="0"></label><br>`;
+        });
+      });
+    }
+
+    // Отправка голоса
+    function submitVote() {
+      const inputs = [...document.querySelectorAll("#voteOptions input")];
+      const votes = inputs.map(i => ({ option: i.dataset.option, value: +i.value }));
+
+      gun.get("polls").get(pollId).get("votes").get(myCode).put(JSON.stringify(votes));
+      alert("Ваш голос учтен!");
+    }
+
+    // Итоги
+    if (pollId) {
+      gun.get("polls").get(pollId).on(poll => {
+        if (!poll || !poll.options) return;
+        let results = {};
+        poll.options.forEach(opt => results[opt] = 0);
+
+        if (poll.votes) {
+          Object.values(poll.votes).forEach(v => {
+            if (v) {
+              JSON.parse(v).forEach(({ option, value }) => {
+                results[option] += value;
+              });
+            }
+          });
+        }
+
+        document.getElementById("resultsArea").innerHTML = Object.entries(results)
+          .map(([opt, val]) => `<p>${opt}: ${val}</p>`).join("");
+      });
+    }
+  </script>
 </body>
 </html>
