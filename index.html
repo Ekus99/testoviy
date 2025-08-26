@@ -1,176 +1,817 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <title>Опросник с GUN.js</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Опросник — P2P (GUN.js)</title>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- GUN (and SEA for basic crypto if needed) -->
   <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gun/sea.js"></script>
+
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background: #f9f9fb; }
-    h2 { color: #333; }
-    .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-    .tab { padding: 10px 20px; border-radius: 8px; background: #eee; cursor: pointer; }
-    .tab.active { background: #4a90e2; color: white; }
-    .content { display: none; }
-    .content.active { display: block; }
-    input, button, textarea { padding: 8px; margin: 5px 0; border-radius: 6px; border: 1px solid #ccc; width: 100%; }
-    button { background: #4a90e2; color: white; border: none; cursor: pointer; }
-    button:hover { background: #357ab8; }
-    .option, .participant { display: flex; gap: 10px; margin-bottom: 5px; }
-    .results { margin-top: 15px; background: #fff; padding: 10px; border-radius: 8px; }
+    :root{
+      --bg:#0f1724;
+      --card:#0b1220;
+      --accent:#7c3aed;
+      --muted:#9aa4b2;
+      --glass: rgba(255,255,255,0.025);
+      --good: #10b981;
+      --danger:#ef4444;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      color-scheme: dark;
+    }
+    html,body{height:100%;}
+    body{
+      margin:0;
+      background: linear-gradient(180deg,var(--bg),#071021 120%);
+      color:#e6eef6;
+      -webkit-font-smoothing:antialiased;
+      padding:28px;
+    }
+    .wrap{
+      max-width:1100px;
+      margin:0 auto;
+      display:grid;
+      grid-template-columns: 1fr 380px;
+      gap:24px;
+      align-items:start;
+    }
+    header{
+      grid-column:1/3;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:16px;
+      margin-bottom:4px;
+    }
+    h1{ margin:0; font-size:20px; letter-spacing:0.2px;}
+    .subtitle{ color:var(--muted); font-size:13px; margin-top:6px;}
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius:14px;
+      padding:18px;
+      box-shadow: 0 6px 24px rgba(2,6,23,0.6);
+      border: 1px solid rgba(255,255,255,0.03);
+    }
+    /* Left column */
+    .tabs{
+      display:flex;
+      gap:8px;
+      margin-bottom:12px;
+    }
+    .tab{
+      padding:8px 12px;
+      border-radius:10px;
+      background:transparent;
+      color:var(--muted);
+      cursor:pointer;
+      border:1px solid transparent;
+      font-weight:600;
+    }
+    .tab.active{
+      background: linear-gradient(90deg, rgba(124,58,237,0.16), rgba(124,58,237,0.08));
+      color: white;
+      border-color: rgba(124,58,237,0.22);
+      box-shadow: 0 6px 18px rgba(124,58,237,0.06);
+    }
+    label{ display:block; font-size:13px; color:var(--muted); margin-bottom:6px; margin-top:12px;}
+    input[type="text"], input[type="number"], textarea, select {
+      width:100%;
+      padding:10px 12px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.04);
+      background:var(--glass);
+      color:inherit;
+      box-sizing:border-box;
+      font-size:14px;
+    }
+    textarea{ min-height:80px; resize:vertical; }
+    .row { display:flex; gap:10px; }
+    .row > *{ flex:1; }
+    .muted { color:var(--muted); font-size:13px; }
+    .small { font-size:13px; color:var(--muted); }
+    .btn{
+      display:inline-flex; align-items:center; gap:8px;
+      background:linear-gradient(90deg,var(--accent), #5b21b6);
+      color:white; padding:10px 14px; border-radius:10px;
+      border:none; cursor:pointer; font-weight:700;
+      box-shadow: 0 8px 24px rgba(92,33,171,0.18);
+    }
+    .btn.ghost{ background:transparent; border:1px solid rgba(255,255,255,0.04); color:var(--muted); box-shadow:none;}
+    .participants-list{ margin-top:10px; display:grid; gap:8px;}
+    .participant-row{ display:flex; gap:8px; align-items:center; }
+    .code-badge{ background:rgba(255,255,255,0.03); padding:6px 10px; border-radius:8px; font-weight:700; font-size:13px;}
+    .link-box{ background:rgba(255,255,255,0.02); padding:10px; border-radius:10px; display:flex; gap:8px; align-items:center; justify-content:space-between; }
+    .note{ font-size:13px; color:var(--muted); margin-top:8px;}
+    .danger{ color:var(--danger); }
+    .good{ color:var(--good); }
+
+    /* Right column */
+    .panel{ position: sticky; top:28px; }
+    .summary-item{ display:flex; justify-content:space-between; gap:12px; padding:8px; border-radius:10px; background:rgba(255,255,255,0.01); margin-bottom:8px;}
+    footer{ grid-column:1/3; margin-top:20px; color:var(--muted); font-size:13px; }
+
+    /* Responsive */
+    @media (max-width:980px){
+      .wrap{ grid-template-columns: 1fr; padding:12px; }
+      .panel{ position:static; }
+    }
   </style>
 </head>
 <body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>Опросник (P2P) — Организатор / Голосующие / Итоги</h1>
+        <div class="subtitle">Синхронизация через GUN.js — распределяем «монеты» между вариантами, результаты в реальном времени</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="small">Poll ID в URL: ?poll=<span id="urlPoll">—</span></div>
+        <div class="muted" style="margin-top:8px">Поделиться кодами участникам — они подключаются с мобильных устройств</div>
+      </div>
+    </header>
 
-  <div class="tabs">
-    <div class="tab active" data-tab="organizer">Организатор</div>
-    <div class="tab" data-tab="voter">Голосование</div>
-    <div class="tab" data-tab="results">Итоги</div>
-  </div>
+    <!-- Left column: main content -->
+    <main class="card">
+      <div class="tabs">
+        <button class="tab active" data-tab="organizer">Организатор</button>
+        <button class="tab" data-tab="voters">Голосующие</button>
+        <button class="tab" data-tab="results">Итоги</button>
+      </div>
 
-  <!-- Организатор -->
-  <div id="organizer" class="content active">
-    <h2>Создание опроса</h2>
-    <label>Вопрос:</label>
-    <input type="text" id="question">
+      <!-- ORGANIZER -->
+      <section id="organizer">
+        <label>Текст опроса</label>
+        <input id="pollQuestion" placeholder="Например: Куда поедем на выходные?">
 
-    <h3>Варианты ответа</h3>
-    <div id="options"></div>
-    <button onclick="addOption()">+ Добавить вариант</button>
+        <label>Варианты ответа (по одному на строку)</label>
+        <textarea id="pollOptions" placeholder="Например:&#10;Море&#10;Горы&#10;Город"></textarea>
 
-    <h3>Участники</h3>
-    <div id="participants"></div>
-    <button onclick="addParticipant()">+ Добавить участника</button>
+        <label>Участники</label>
+        <div style="display:flex; gap:8px;">
+          <input id="participantName" placeholder="Имя участника">
+          <input id="participantVotes" type="number" min="1" placeholder="Монет(ов)">
+          <button id="addParticipantBtn" class="btn ghost">Добавить</button>
+        </div>
 
-    <button onclick="createPoll()">Создать опрос</button>
-    <div id="pollLink"></div>
-  </div>
+        <div class="participants-list" id="participantsList" style="margin-top:12px;"></div>
 
-  <!-- Голосование -->
-  <div id="voter" class="content">
-    <h2>Голосование</h2>
-    <input type="text" id="accessCode" placeholder="Введите код доступа">
-    <button onclick="enterPoll()">Войти</button>
-    <div id="votingArea" style="display:none;">
-      <h3 id="pollQuestion"></h3>
-      <div id="voteOptions"></div>
-      <button onclick="submitVote()">Проголосовать</button>
-    </div>
-  </div>
+        <div style="display:flex; gap:8px; margin-top:14px;">
+          <button id="createPollBtn" class="btn">Создать опрос</button>
+          <button id="clearBtn" class="btn ghost">Очистить форму</button>
+        </div>
 
-  <!-- Итоги -->
-  <div id="results" class="content">
-    <h2>Итоги голосования</h2>
-    <div id="resultsArea"></div>
+        <div id="createdArea" style="margin-top:14px;display:none;">
+          <div class="note">Опрос создан. Скопируйте ссылки/коды ниже и раздайте участникам.</div>
+          <div style="margin-top:10px;" class="link-box">
+            <div style="flex:1">
+              <div class="small">Публичная ссылка на опрос</div>
+              <div id="pollLink" style="word-break:break-all; font-weight:700; margin-top:4px;"></div>
+            </div>
+            <div style="min-width:160px; text-align:right">
+              <button id="copyLinkBtn" class="btn ghost">Копировать ссылку</button>
+            </div>
+          </div>
+
+          <div style="margin-top:10px;">
+            <div class="small">Коды участников (каждому участнику по коду)</div>
+            <div id="codesArea" style="margin-top:8px; display:grid; gap:6px;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VOTERS -->
+      <section id="voters" style="display:none;">
+        <label>Введите ваш код участника</label>
+        <div style="display:flex; gap:8px;">
+          <input id="voterCodeInput" placeholder="Код: ABC123">
+          <button id="enterCodeBtn" class="btn">Войти</button>
+        </div>
+
+        <div id="voterArea" style="margin-top:12px; display:none;">
+          <div class="note" id="voterWelcome"></div>
+          <div style="margin-top:12px;">
+            <div class="small">Варианты</div>
+            <div id="voteOptionsBox" style="margin-top:8px; display:grid; gap:8px;"></div>
+
+            <div style="margin-top:10px;">
+              <div class="small">Остаток монет: <span id="remainingCoins" style="font-weight:800">0</span></div>
+            </div>
+
+            <div style="display:flex; gap:8px; margin-top:12px;">
+              <button id="submitVoteBtn" class="btn">Проголосовать</button>
+              <button id="clearVoteBtn" class="btn ghost">Сбросить поля</button>
+            </div>
+
+            <div id="voterMsg" class="note" style="margin-top:10px;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RESULTS -->
+      <section id="results" style="display:none;">
+        <div class="small">Общие результаты (в реальном времени)</div>
+        <div style="margin-top:12px; display:flex; gap:12px; align-items:flex-start;">
+          <div style="flex:1;">
+            <canvas id="resultsChart" height="160"></canvas>
+          </div>
+          <div style="width:240px;">
+            <div class="card" style="padding:12px;">
+              <div class="small">Краткое</div>
+              <div id="totalsList" style="margin-top:10px;"></div>
+              <div style="margin-top:10px;">
+                <button id="exportBtn" class="btn ghost">Экспорт CSV</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Right column: panel -->
+    <aside class="panel">
+      <div class="card">
+        <div class="small" style="margin-bottom:8px;">Информация о синхронизации</div>
+        <div class="muted">Этот демонстрационный клиент использует <strong>GUN.js</strong> для обмена данными между устройствами. Чтобы устройства видели друг друга, необходим хотя бы один публичный GUN-peer.</div>
+
+        <div style="margin-top:12px;">
+          <label>Peer (можно изменить)</label>
+          <input id="peerInput" placeholder="https://your-gun-peer.example.com/gun" />
+          <div style="display:flex; gap:8px; margin-top:8px;">
+            <button id="applyPeerBtn" class="btn ghost">Применить</button>
+            <button id="useDefaultPeerBtn" class="btn">Использовать публичный peer</button>
+          </div>
+          <div class="note" style="margin-top:8px;">Если вы не укажете peer, будет использован демонстрационный публичный peer (подходит для тестов).</div>
+        </div>
+
+        <hr style="margin:12px 0; border-color:rgba(255,255,255,0.03)"/>
+
+        <div class="small">Текущее состояние</div>
+        <div style="margin-top:8px;">
+          <div class="summary-item"><div class="muted">Текущий pollID</div><div id="statePoll">—</div></div>
+          <div class="summary-item"><div class="muted">Подключение GUN</div><div id="gunStatus">Инициализация...</div></div>
+          <div class="summary-item"><div class="muted">Узелов (peers) подключено</div><div id="peerCount">—</div></div>
+        </div>
+
+      </div>
+    </aside>
+
+    <footer>© Демонстрация — опросник на GUN.js. Для продакшена: замените публичный peer на ваш собственный или используйте WebRTC mesh.</footer>
   </div>
 
   <script>
-    const gun = Gun(['https://gun-manhattan.herokuapp.com/gun']);
-    const urlParams = new URLSearchParams(window.location.search);
-    const pollId = urlParams.get("poll");
+  (function(){
+    // ----------------------
+    // Конфигурация
+    // ----------------------
+    // Пример публичного пира (демонстрационный). При необходимости замените на ваш.
+    const DEFAULT_PEER = 'https://gun-manhattan.herokuapp.com/gun'; // пример публичного peer (демо)
+    // ----------------------
 
-    let currentPoll = null;
-    let myCode = null;
+    // Утилиты
+    function uid(len=8){ const s='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'; let r=''; for(let i=0;i<len;i++) r+=s[Math.floor(Math.random()*s.length)]; return r; }
+    function $(id){ return document.getElementById(id); }
+    function show(el){ el.style.display = ''; }
+    function hide(el){ el.style.display = 'none'; }
+    function q(query, root=document){ return root.querySelector(query); }
 
-    // Переключение вкладок
-    document.querySelectorAll(".tab").forEach(tab => {
-      tab.onclick = () => {
-        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-        document.querySelectorAll(".content").forEach(c => c.classList.remove("active"));
-        tab.classList.add("active");
-        document.getElementById(tab.dataset.tab).classList.add("active");
-      };
-    });
+    // Read poll id from URL if provided
+    const urlParams = new URLSearchParams(location.search);
+    let initialPollFromURL = urlParams.get('poll');
 
-    // Добавление вариантов
-    function addOption() {
-      const div = document.createElement("div");
-      div.className = "option";
-      div.innerHTML = `<input type="text" placeholder="Вариант ответа">`;
-      document.getElementById("options").appendChild(div);
+    // GUN init (will be re-initable)
+    let gun = null;
+    let GUN_PEERS = []; // set later
+    let connectedPeers = 0;
+
+    function initGun(peers){
+      // Destroy previous if exists (best effort)
+      try{ if(window.gun && window.gun.off) { /* no-op */ } } catch(e){}
+      GUN_PEERS = peers && peers.length ? peers : [DEFAULT_PEER];
+      gun = Gun({ peers: GUN_PEERS, localStorage: true });
+      // basic connectivity awareness
+      // Gun doesn't expose a neat peers count; we'll approximate by pinging a known root
+      // Use a small heartbeat to detect online
+      if(!gun){ $('gunStatus').textContent='Ошибка инициализации'; return; }
+      $('gunStatus').textContent = 'Подключение...';
+      connectedPeers = 0;
+      // Try to measure reachability by setting and reading a timestamp
+      const hb = gun.get('_heartbeat_');
+      const tkey = 'hb-'+uid(4);
+      hb.get(tkey).put({ts: Date.now()});
+      setTimeout(()=>{
+        hb.get(tkey).once(data=>{
+          if(data && data.ts){ $('gunStatus').textContent='Онлайн'; } else { $('gunStatus').textContent='Ограничено'; }
+        });
+      },1200);
+      $('peerCount').textContent = GUN_PEERS.length;
+      window.gun = gun; // expose for debugging
     }
 
-    // Добавление участников
-    function addParticipant() {
-      const div = document.createElement("div");
-      div.className = "participant";
-      div.innerHTML = `<input type="text" placeholder="Имя"> <input type="number" placeholder="Голоса">`;
-      document.getElementById("participants").appendChild(div);
+    // Initialize GUN with default peer
+    initGun([DEFAULT_PEER]);
+
+    // ----------------------
+    // Модель данных (GUN)
+    // polls/{pollID} => { question, options:[], participants: {code:{name,votes}}, createdAt }
+    // votes/{pollID}/{code} => { allocation: {optionIndex:count,...}, updatedAt }
+    // ----------------------
+    function pollRef(id){
+      return gun.get('polls').get(id);
+    }
+    function votesRef(id){
+      return gun.get('votes').get(id);
     }
 
-    // Создание опроса
-    function createPoll() {
-      const question = document.getElementById("question").value;
-      const options = [...document.querySelectorAll("#options input")].map(o => o.value).filter(v => v);
-      const participants = [...document.querySelectorAll("#participants .participant")].map(p => {
-        const [name, votes] = p.querySelectorAll("input");
-        return { name: name.value, votes: +votes.value, code: Math.random().toString(36).substring(2, 8) };
+    // UI wiring
+    const tabs = document.querySelectorAll('.tab');
+    tabs.forEach(t=> t.addEventListener('click', () => {
+      tabs.forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+      const id = t.dataset.tab;
+      ['organizer','voters','results'].forEach(s => {
+        const sec = $(s);
+        if(s===id) show(sec); else hide(sec);
       });
+    }));
 
-      const newPollId = Math.random().toString(36).substring(2, 10);
-      gun.get("polls").get(newPollId).put({ question, options, participants });
+    // Organizer controls
+    const participants = []; // local temporary list before poll creation: {name, votes, code}
+    const participantsList = $('participantsList');
+    const codesArea = $('codesArea');
+    const createdArea = $('createdArea');
+    const pollLink = $('pollLink');
+    const urlPoll = $('urlPoll');
+    const statePoll = $('statePoll');
 
-      let codes = participants.map(p => `${p.name}: ${p.code} (${p.votes} голосов)`).join("<br>");
-      document.getElementById("pollLink").innerHTML = `
-        <p>Ссылка на опрос: <a href="?poll=${newPollId}">${window.location.origin}${window.location.pathname}?poll=${newPollId}</a></p>
-        <p><b>Коды доступа:</b><br>${codes}</p>`;
-    }
-
-    // Вход голосующего
-    function enterPoll() {
-      if (!pollId) {
-        alert("Нет параметра poll в URL!");
-        return;
-      }
-      const code = document.getElementById("accessCode").value.trim();
-      myCode = code;
-
-      gun.get("polls").get(pollId).once(poll => {
-        if (!poll) { alert("Опрос не найден"); return; }
-        currentPoll = poll;
-        const participant = poll.participants.find(p => p.code === code);
-        if (!participant) { alert("Неверный код"); return; }
-
-        document.getElementById("votingArea").style.display = "block";
-        document.getElementById("pollQuestion").innerText = poll.question;
-
-        const voteOptions = document.getElementById("voteOptions");
-        voteOptions.innerHTML = "";
-        poll.options.forEach(opt => {
-          voteOptions.innerHTML += `<label>${opt}: <input type="number" min="0" max="${participant.votes}" data-option="${opt}" value="0"></label><br>`;
+    function renderParticipants(){
+      participantsList.innerHTML = '';
+      participants.forEach((p, idx)=>{
+        const div = document.createElement('div');
+        div.className = 'participant-row';
+        div.innerHTML = `<div style="flex:1;"><strong>${p.name}</strong><div class="muted">монет: ${p.votes}</div></div>
+                         <div style="display:flex; gap:6px; align-items:center;">
+                            <div class="code-badge">${p.code}</div>
+                            <button data-idx="${idx}" class="btn ghost smallBtn" style="padding:6px 8px;">Удалить</button>
+                         </div>`;
+        participantsList.appendChild(div);
+      });
+      participantsList.querySelectorAll('button.smallBtn').forEach(btn=>{
+        btn.addEventListener('click', (e)=>{
+          const i = +btn.dataset.idx;
+          participants.splice(i,1);
+          renderParticipants();
         });
       });
     }
 
-    // Отправка голоса
-    function submitVote() {
-      const inputs = [...document.querySelectorAll("#voteOptions input")];
-      const votes = inputs.map(i => ({ option: i.dataset.option, value: +i.value }));
+    $('addParticipantBtn').addEventListener('click', ()=>{
+      const name = $('participantName').value.trim();
+      const votes = parseInt($('participantVotes').value) || 0;
+      if(!name || votes<=0){ alert('Укажите имя и положительное число голосов'); return; }
+      const code = uid(6).toUpperCase();
+      participants.push({name, votes, code});
+      $('participantName').value=''; $('participantVotes').value='';
+      renderParticipants();
+    });
 
-      gun.get("polls").get(pollId).get("votes").get(myCode).put(JSON.stringify(votes));
-      alert("Ваш голос учтен!");
-    }
+    $('clearBtn').addEventListener('click', ()=>{
+      if(!confirm('Очистить форму опроса?')) return;
+      $('pollQuestion').value=''; $('pollOptions').value=''; participants.splice(0,participants.length); renderParticipants();
+      hide(createdArea);
+      codesArea.innerHTML='';
+      pollLink.textContent='';
+      urlPoll.textContent='—';
+      statePoll.textContent='—';
+    });
 
-    // Итоги
-    if (pollId) {
-      gun.get("polls").get(pollId).on(poll => {
-        if (!poll || !poll.options) return;
-        let results = {};
-        poll.options.forEach(opt => results[opt] = 0);
+    // Create poll
+    $('createPollBtn').addEventListener('click', async ()=>{
+      const q = $('pollQuestion').value.trim();
+      const optsRaw = $('pollOptions').value.trim();
+      if(!q){ alert('Введите текст опроса'); return; }
+      if(!optsRaw){ alert('Укажите варианты (по одному на строку)'); return; }
+      if(participants.length===0){ alert('Добавьте хотя бы одного участника'); return; }
+      const options = optsRaw.split('\n').map(s=>s.trim()).filter(Boolean);
+      if(options.length<2){ alert('Нужно минимум 2 варианта ответа'); return; }
 
-        if (poll.votes) {
-          Object.values(poll.votes).forEach(v => {
-            if (v) {
-              JSON.parse(v).forEach(({ option, value }) => {
-                results[option] += value;
-              });
-            }
-          });
+      const pollID = uid(8).toLowerCase();
+      const poll = {
+        question: q,
+        options,
+        createdAt: Date.now(),
+      };
+
+      // write to GUN: poll meta & participants
+      const pRef = pollRef(pollID);
+      pRef.put(poll);
+      // participants map
+      const participantsNode = pRef.get('participants');
+      participants.forEach(p=>{
+        participantsNode.get(p.code).put({ name:p.name, votes:p.votes, code:p.code, createdAt: Date.now() });
+      });
+
+      // update UI with generated codes and link
+      codesArea.innerHTML = '';
+      participants.forEach(p=>{
+        const el = document.createElement('div');
+        el.className='participant-row';
+        el.innerHTML = `<div style="flex:1;"><strong>${p.name}</strong><div class="muted">монет: ${p.votes}</div></div>
+                        <div style="min-width:150px; text-align:right">
+                          <div class="code-badge">${p.code}</div>
+                        </div>`;
+        codesArea.appendChild(el);
+      });
+
+      const link = location.origin + location.pathname + '?poll=' + pollID;
+      pollLink.textContent = link;
+      urlPoll.textContent = pollID;
+      statePoll.textContent = pollID;
+
+      createdArea.style.display = '';
+      // ensure URL updated for organizer (does not reload page)
+      const newUrl = new URL(location.href);
+      newUrl.searchParams.set('poll', pollID);
+      window.history.replaceState({}, '', newUrl);
+
+      // show codes area
+      // optionally clear form for next poll
+      // keep participants in UI so organizer can copy codes
+      alert('Опрос создан. Скопируйте ссылку и коды участников.');
+    });
+
+    // Copy link
+    $('copyLinkBtn').addEventListener('click', ()=>{
+      const txt = pollLink.textContent;
+      if(!txt){ alert('Ссылка отсутствует'); return; }
+      navigator.clipboard?.writeText(txt).then(()=> alert('Ссылка скопирована в буфер обмена.'), ()=> alert('Не удалось скопировать'));
+    });
+
+    // Voters: enter code
+    let currentSession = { pollID: null, code: null, participant: null, pollMeta: null };
+
+    $('enterCodeBtn').addEventListener('click', ()=> {
+      const code = $('voterCodeInput').value.trim().toUpperCase();
+      if(!code){ alert('Введите код участника'); return; }
+      if(!currentSession.pollID){
+        if(initialPollFromURL) currentSession.pollID = initialPollFromURL;
+        else {
+          // Try to read pollID from organiser-created area
+          const cur = statePoll.textContent;
+          if(cur && cur !== '—') currentSession.pollID = cur;
         }
+      }
+      if(!currentSession.pollID){
+        alert('Poll ID не задан. Введите ссылку вида ?poll=ID или попросите организатора создать опрос.');
+        return;
+      }
+      attemptEnter(currentSession.pollID, code);
+    });
 
-        document.getElementById("resultsArea").innerHTML = Object.entries(results)
-          .map(([opt, val]) => `<p>${opt}: ${val}</p>`).join("");
+    async function attemptEnter(pollID, code){
+      // load poll meta and participant
+      const pRef = pollRef(pollID);
+      pRef.once(async meta=>{
+        if(!meta || !meta.question){ alert('Опрос не найден или ещё не опубликован.'); return; }
+        // lookup participant
+        pRef.get('participants').get(code).once(part=>{
+          if(!part || !part.name){ alert('Неверный код участника'); return; }
+          currentSession.pollID = pollID;
+          currentSession.code = code;
+          currentSession.participant = part;
+          currentSession.pollMeta = meta;
+          openVoterUI();
+          // subscribe to poll votes for real-time remaining coins update
+          subscribeVotesForVoter();
+          // update URL to include poll
+          const newUrl = new URL(location.href);
+          newUrl.searchParams.set('poll', pollID);
+          window.history.replaceState({}, '', newUrl);
+        });
       });
     }
+
+    function openVoterUI(){
+      show($('voterArea'));
+      $('voterWelcome').textContent = `Здравствуйте, ${currentSession.participant.name}. Вам выдано ${currentSession.participant.votes} монет.`;
+      // render options as numeric inputs
+      const box = $('voteOptionsBox'); box.innerHTML='';
+      currentSession.pollMeta.options.forEach((opt, idx)=>{
+        const row = document.createElement('div');
+        row.style.display='flex'; row.style.gap='8px'; row.style.alignItems='center';
+        row.innerHTML = `<div style="flex:1"><strong>${opt}</strong></div>
+                         <div style="width:120px; display:flex; gap:8px; align-items:center;">
+                           <input data-idx="${idx}" type="number" min="0" value="0" style="width:80px; padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.04); background:transparent;">
+                           <div class="muted" style="font-size:13px;">шт</div>
+                         </div>`;
+        box.appendChild(row);
+      });
+      updateRemainingDisplay();
+      // try to load existing vote of this code and prefill
+      votesRef(currentSession.pollID).get(currentSession.code).once(existing=>{
+        if(existing && existing.allocation){
+          // populate inputs
+          const inputs = box.querySelectorAll('input[type=number]');
+          Object.keys(existing.allocation).forEach(k=>{
+            const idx = +k;
+            if(inputs[idx]) inputs[idx].value = existing.allocation[idx] || 0;
+          });
+          updateRemainingDisplay();
+        }
+      });
+    }
+
+    function updateRemainingDisplay(){
+      const inputs = $('voteOptionsBox').querySelectorAll('input[type=number]');
+      let sum = 0;
+      inputs.forEach(inp => sum += parseInt(inp.value) || 0);
+      const max = currentSession.participant?.votes || 0;
+      $('remainingCoins').textContent = (max - sum);
+      if(max - sum < 0){
+        $('remainingCoins').style.color = 'var(--danger)';
+      } else {
+        $('remainingCoins').style.color = '';
+      }
+    }
+
+    // delegate change events on dynamic inputs
+    $('voteOptionsBox').addEventListener('input', (e)=>{
+      if(e.target && e.target.matches('input[type=number]')){
+        // normalize negative
+        if(e.target.value === '') e.target.value = 0;
+        if(parseInt(e.target.value) < 0) e.target.value = 0;
+        updateRemainingDisplay();
+      }
+    });
+
+    $('clearVoteBtn').addEventListener('click', ()=>{
+      $('voteOptionsBox').querySelectorAll('input[type=number]').forEach(i => i.value = 0);
+      updateRemainingDisplay();
+      $('voterMsg').textContent = 'Поля сброшены.';
+    });
+
+    $('submitVoteBtn').addEventListener('click', ()=>{
+      if(!currentSession.code || !currentSession.pollID){ alert('Сначала войдите с кодом участника'); return; }
+      const inputs = $('voteOptionsBox').querySelectorAll('input[type=number]');
+      const allocation = {};
+      let sum = 0;
+      inputs.forEach((inp, i) => {
+        const v = Math.max(0, Math.floor(Number(inp.value) || 0));
+        allocation[i] = v;
+        sum += v;
+      });
+      const max = currentSession.participant.votes || 0;
+      if(sum > max){ $('voterMsg').textContent = 'Вы распределили больше монет, чем вам выдали.'; return; }
+      // write to GUN: votes/{pollID}/{code} = { allocation, updatedAt }
+      votesRef(currentSession.pollID).get(currentSession.code).put({ allocation, updatedAt: Date.now() });
+      $('voterMsg').textContent = 'Голос отправлен. Спасибо!';
+    });
+
+    // subscribe to votes for this voter to update remaining when others change (if organizer modifies participant) 
+    function subscribeVotesForVoter(){
+      // re-load participant data on changes (in case organizer updates)
+      pollRef(currentSession.pollID).get('participants').get(currentSession.code).on(p=>{
+        if(p){ currentSession.participant = p; $('voterWelcome').textContent = `Здравствуйте, ${p.name}. Вам выдано ${p.votes} монет.`; updateRemainingDisplay(); }
+      });
+    }
+
+    // RESULTS: aggregate votes in real time
+    let chart = null;
+    const chartCtx = $('resultsChart').getContext('2d');
+    let currentTotals = [];
+    function initChart(optionLabels){
+      if(chart) chart.destroy();
+      chart = new Chart(chartCtx, {
+        type: 'bar',
+        data: {
+          labels: optionLabels,
+          datasets: [{
+            label: 'Голоса (монеты)',
+            data: optionLabels.map(()=>0),
+            backgroundColor: optionLabels.map(()=>undefined),
+            borderRadius:6,
+          }]
+        },
+        options: {
+          responsive:true,
+          scales: {
+            y: { beginAtZero:true }
+          },
+          plugins: { legend:{ display:false } }
+        }
+      });
+    }
+
+    // subscribe to poll results given pollID — listens to votes/{pollID} and poll meta
+    let pollResultsSubscription = null;
+    function subscribeResultsToPoll(pollID){
+      if(!pollID) return;
+      // load poll meta
+      pollRef(pollID).once(meta=>{
+        if(!meta){ console.warn('Poll meta not found'); return; }
+        $('statePoll').textContent = pollID;
+        initialPollFromURL = pollID;
+        $('urlPoll').textContent = pollID;
+        // init chart with options
+        initChart(meta.options);
+        // subscribe to votes
+        const vRef = votesRef(pollID);
+        // maintain totals array
+        currentTotals = meta.options.map(()=>0);
+        // reset totals and recompute on each vote change
+        vRef.map().on((voteObj, code)=>{
+          // recompute totals from scratch each time for correctness
+          recomputeTotals(pollID);
+        });
+        // also subscribe to participants changes to update totals UI
+        pollRef(pollID).get('participants').map().on(p=>{
+          // whenever participant list changes, recompute totals (not strictly necessary)
+          recomputeTotals(pollID);
+        });
+      });
+    }
+
+    async function recomputeTotals(pollID){
+      // fetch meta options length
+      pollRef(pollID).once(meta=>{
+        if(!meta) return;
+        const len = meta.options.length;
+        const totals = new Array(len).fill(0);
+        // iterate votes
+        votesRef(pollID).map().once((v, k)=>{
+          if(!v || !v.allocation) return;
+          Object.keys(v.allocation).forEach(idxStr=>{
+            const idx = +idxStr;
+            const val = Number(v.allocation[idxStr]) || 0;
+            if(idx >=0 && idx < len) totals[idx] += val;
+          });
+          // After each change, update chart & sidebox
+          updateResultsUI(meta.options, totals, pollID);
+        });
+        // Ensure update even if no votes (clear)
+        setTimeout(()=> updateResultsUI(meta.options, totals, pollID), 300);
+      });
+    }
+
+    function updateResultsUI(optionLabels, totals, pollID){
+      // update chart
+      if(!chart) initChart(optionLabels);
+      chart.data.labels = optionLabels;
+      chart.data.datasets[0].data = totals;
+      chart.update();
+
+      // update totals list
+      const node = $('totalsList');
+      node.innerHTML = '';
+      optionLabels.forEach((lbl, i)=>{
+        const div = document.createElement('div');
+        div.className='summary-item';
+        div.innerHTML = `<div style="flex:1"><strong>${lbl}</strong><div class="muted">всего</div></div><div style="text-align:right"><div style="font-weight:800">${totals[i]}</div></div>`;
+        node.appendChild(div);
+      });
+
+      // set state poll
+      $('statePoll').textContent = pollID || '—';
+      // also show pollID in header area
+      $('urlPoll').textContent = pollID || '—';
+    }
+
+    // Export CSV
+    $('exportBtn').addEventListener('click', ()=>{
+      const pollID = initialPollFromURL || $('statePoll').textContent;
+      if(!pollID || pollID==='—'){ alert('Poll ID не задан'); return; }
+      // gather meta + votes
+      pollRef(pollID).once(meta=>{
+        if(!meta) { alert('Poll meta not found'); return; }
+        const headers = ['participant_code','participant_name','option_index','option_text','allocated'];
+        let rows = [headers.join(',')];
+        votesRef(pollID).map().once((v, code)=>{
+          if(!v || !v.allocation) return;
+          const allocations = v.allocation;
+          Object.keys(allocations).forEach(idx=>{
+            const line = [code, (v.name || ''), idx, `"${meta.options[idx] || ''}"`, allocations[idx] || 0].join(',');
+            rows.push(line);
+          });
+        });
+        setTimeout(()=>{
+          const csv = rows.join('\n');
+          const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a'); a.href = url; a.download = `poll_${pollID}_export.csv`; a.click();
+          URL.revokeObjectURL(url);
+        }, 600);
+      });
+    });
+
+    // Apply peer changes from panel
+    $('applyPeerBtn').addEventListener('click', ()=>{
+      const p = $('peerInput').value.trim();
+      if(!p){ alert('Введите адрес peer'); return; }
+      initGun([p]);
+      alert('Применён peer: ' + p + '. Попробуйте пересоздать/перезагрузить подключенные клиенты.');
+    });
+    $('useDefaultPeerBtn').addEventListener('click', ()=>{
+      $('peerInput').value = DEFAULT_PEER;
+      initGun([DEFAULT_PEER]);
+      alert('Используется публичный peer (демо).');
+    });
+
+    // If poll id present in URL at load, subscribe results automatically
+    if(initialPollFromURL){
+      subscribeResultsToPoll(initialPollFromURL);
+      statePoll.textContent = initialPollFromURL;
+      urlPoll.textContent = initialPollFromURL;
+    }
+
+    // Also subscribe whenever statePoll changes (user creates poll)
+    // We'll use a mutation observer on statePoll text content
+    const observer = new MutationObserver(()=> {
+      const id = statePoll.textContent;
+      if(id && id !== '—') subscribeResultsToPoll(id);
+    });
+    observer.observe(statePoll, { characterData:true, childList:true, subtree:true });
+
+    // Also try to resubscribe if user enters poll via voters interface (when currentSession.pollID set)
+    // After each successful attemptEnter we call subscribeResultsToPoll in currentSession flow by mut observer
+
+    // Extra: if user navigates directly to voters page with poll in URL, attempt to prefill pollID
+    if(initialPollFromURL){
+      // show poll id in header already set; results subscription already attempted
+    }
+
+    // UI: track clicks on tabs to auto-subscribe results tab
+    document.querySelectorAll('.tab').forEach(t=>{
+      t.addEventListener('click', ()=>{
+        if(t.dataset.tab === 'results'){
+          const pid = initialPollFromURL || statePoll.textContent;
+          if(pid && pid!=='—') subscribeResultsToPoll(pid);
+        }
+      });
+    });
+
+    // When votes change, recompute totals (global)
+    // For safety, observe votes node at root and recompute for current poll periodically
+    setInterval(()=>{
+      const pid = initialPollFromURL || statePoll.textContent;
+      if(pid && pid !== '—') recomputeTotals(pid);
+    }, 2500);
+
+    // If user opens via direct link with poll param, prefill pollID in voter entry
+    if(initialPollFromURL){
+      $('voterCodeInput').placeholder = 'Код: ABC123 (poll prefilled)';
+      // also set statePoll
+      statePoll.textContent = initialPollFromURL;
+    }
+
+    // Utility: allow participant's votes to store name for export convenience
+    // When organizer adds participant, we already set their name in participants node.
+    // When voting, include participant name in votes node for ease of CSV exports
+    // Modify submit to also save name
+    (function patchVoteSubmission(){
+      const orig = $('submitVoteBtn').onclick;
+      // we've already bound the submit handler above; adjust votes write to include name
+      // Replace votes write with wrapper: (we will override submit click behavior)
+      $('submitVoteBtn').removeEventListener('click', ()=>{});
+      $('submitVoteBtn').addEventListener('click', ()=>{
+        if(!currentSession.code || !currentSession.pollID){ alert('Сначала войдите с кодом участника'); return; }
+        const inputs = $('voteOptionsBox').querySelectorAll('input[type=number]');
+        const allocation = {};
+        let sum = 0;
+        inputs.forEach((inp, i) => {
+          const v = Math.max(0, Math.floor(Number(inp.value) || 0));
+          allocation[i] = v;
+          sum += v;
+        });
+        const max = currentSession.participant.votes || 0;
+        if(sum > max){ $('voterMsg').textContent = 'Вы распределили больше монет, чем вам выдали.'; return; }
+        // include participant name in votes record (snapshot)
+        const voteRecord = { allocation, updatedAt: Date.now(), name: currentSession.participant.name };
+        votesRef(currentSession.pollID).get(currentSession.code).put(voteRecord);
+        $('voterMsg').textContent = 'Голос отправлен. Спасибо!';
+      });
+    })();
+
+    // When poll meta changes (e.g., organizer edits options) — attempt to update UI
+    // Subscribe to meta once created
+    gun.get('polls').map().on((p, pid)=>{
+      // if user views this poll, and it's loaded, update chart
+      if(pid === (initialPollFromURL || statePoll.textContent)){
+        if(p && p.options) initChart(p.options);
+      }
+    });
+
+    // Small UX: when voter inputs code and poll in URL exists, allow Enter key to submit
+    $('voterCodeInput').addEventListener('keydown', (e)=> { if(e.key==='Enter') $('enterCodeBtn').click(); });
+
+    // When organizer creates poll, ensure subscribe to results
+    // We already set statePoll and history; mutation observer will handle subscribe.
+
+    // Informative console
+    console.log('P2P Poll client loaded. GUN peers:', GUN_PEERS);
+  })();
   </script>
 </body>
 </html>
