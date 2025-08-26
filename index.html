@@ -5,9 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Онлайн-опросник с монетами • GUN.js (P2P)</title>
 
-  <!-- GUN (p2p db). Работает как статическая страница. 
-       Для межустройственного обмена используются общедоступные реле-пиры (без ваших серверов).
-       Вы можете добавить/изменить пиры во вкладке "Дополнительно". -->
+  <!-- GUN (p2p db). Работает как статическая страница -->
   <script src="https://cdn.jsdelivr.net/npm/gun/gun.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/gun/sea.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/gun/lib/webrtc.js"></script>
@@ -112,6 +110,7 @@
       border:1px solid #2a3775; color:#eaf0ff;
     }
     .btn.danger{background:linear-gradient(180deg,#ff6a88,#e14a68)}
+    .btn.small{padding:8px 10px;font-size:12px}
 
     .list{display:grid; gap:10px}
     .item{
@@ -141,9 +140,6 @@
     .remove{background:#141c43;border:1px solid #2a3775;border-radius:10px;padding:8px 10px;cursor:pointer;color:#b9c6ff}
     .remove:hover{background:#182051}
 
-    .switcher{display:flex;gap:8px;flex-wrap:wrap}
-    .switcher .btn{padding:8px 10px;font-weight:600;border-radius:10px}
-
     .chips{display:flex;flex-wrap:wrap;gap:8px}
     .chip{background:#131a3c;border:1px solid #2a3775;border-radius:999px;padding:6px 10px;font-size:12px}
     canvas{background:#0b112e;border:1px solid #22306a;border-radius:12px}
@@ -161,7 +157,7 @@
           <div class="small ghost">Три вкладки · P2P синхронизация · Один статический файл</div>
         </div>
       </div>
-      <div class="switcher" role="tablist" aria-label="Вкладки">
+      <div class="tabs" role="tablist" aria-label="Вкладки">
         <button class="tab-btn active" data-tab="org" aria-selected="true">Организатор</button>
         <button class="tab-btn" data-tab="voter" aria-selected="false">Голосующий</button>
         <button class="tab-btn" data-tab="results" aria-selected="false">Итоги</button>
@@ -224,14 +220,14 @@
 
       <div class="card">
         <h2>Дополнительно</h2>
-        <label>Пиры GUN (через запятую) — по умолчанию используются публичные сообщества-пиры. Вы можете указать свои.</label>
+        <label>Пиры GUN (через запятую). По умолчанию подключены публичные реле.</label>
         <input type="text" id="peer-input" placeholder="https://peer1.example/gun, https://peer2.example/gun" />
         <div class="row" style="margin-top:8px">
           <button class="btn secondary" id="save-peers">Сохранить пиры</button>
           <button class="btn secondary" id="reset-peers">Сбросить к умолчанию</button>
         </div>
         <div class="notice small">
-          Список активных пиров: <span id="peers-list" class="mono"></span>
+          Активные пиры: <span id="peers-list" class="mono"></span>
         </div>
 
         <h3>Открыть существующий опрос</h3>
@@ -334,10 +330,10 @@
 
     // Пиры по умолчанию — публичные (без развёртывания серверов у вас)
     const DEFAULT_PEERS = [
-      // Можно заменить или дополнить своими; сохраняются в localStorage
+      // Можно заменить/дополнить своими; сохраняются в localStorage
       "https://peer.wallie.io/gun",
       "https://relay.peer.ooo/gun",
-      "https://gunjs.herokuapp.com/gun"
+      "https://gun-manhattan.herokuapp.com/gun"
     ];
 
     // Инициализация GUN с сохранёнными или дефолтными пирами
@@ -549,21 +545,16 @@
         dqs('#v-status').innerHTML = `<span class="ok">Код принят.</span> Ваш лимит: <b class="mono">${limit}</b>`;
         localStorage.setItem('v_last', JSON.stringify({pollId, code}));
 
-        // 3) Уже голосовал?
-        pollRef.get('submissions').get(code).once(s=>{
-          const already = !!(s && s.votes);
-          voterState.submitted = already;
-          if(already){
-            dqs('#v-already').classList.remove('hidden');
-          } else {
-            dqs('#v-already').classList.add('hidden');
-          }
+        // 3) Уже голосовал? (флаг submitted в отдельном поле)
+        pollRef.get('submissions').get(code).get('submitted').once(flag=>{
+          voterState.submitted = !!flag;
+          dqs('#v-already').classList.toggle('hidden', !voterState.submitted);
         });
 
         // 4) Загружаем варианты и рендерим форму
+        voterState.options = [];
         pollRef.get('options').map().once((o, k)=>{
           if(!o || !o.text) return;
-          // собираем все, а после небольшой задержки — рисуем разом
           voterState.options.push({ id: o.id || k, text: o.text });
           debounce(renderVotingUI, 80)();
         });
@@ -634,20 +625,25 @@
       dqs('#v-left').textContent = left;
     }
 
+    // >>> НОВАЯ ЗАПИСЬ ГОЛОСА: каждый вариант — отдельный узел, флаг submitted отдельно
     function submitVote(){
       if(voterState.submitted){ alert('Ваш голос уже учтён'); return; }
       const sum = totalAllocated();
       if(sum === 0 && !confirm('Вы не распределили ни одной монеты. Отправить пустой голос?')) return;
 
       const pollRef = DB.get(voterState.pollId);
-      // Идемпотентная запись: у кода может появиться голос позже, не пересчитываем вручную итоги.
-      const payload = { votes: voterState.allocations, by: voterState.code, submittedAt: Date.now() };
-      pollRef.get('submissions').get(voterState.code).put(payload, ack=>{
-        if(ack && ack.err){ alert('Ошибка записи: '+ack.err); return; }
-        voterState.submitted = true;
-        dqs('#v-already').classList.remove('hidden');
-        alert('Голос учтён! Спасибо.');
+      const subRef  = pollRef.get('submissions').get(voterState.code);
+
+      Object.entries(voterState.allocations).forEach(([optId, val])=>{
+        subRef.get('votes').get(optId).put(parseInt(val||0,10) || 0);
       });
+
+      subRef.get('submitted').put(true);
+      subRef.get('submittedAt').put(Date.now());
+
+      voterState.submitted = true;
+      dqs('#v-already').classList.remove('hidden');
+      alert('Голос учтён! Спасибо.');
     }
 
     function setVStatus(msg, isErr=false){
@@ -667,8 +663,9 @@
       loadResults(pid);
     });
 
+    // >>> НОВАЯ ПОДПИСКА НА РЕЗУЛЬТАТЫ: голоса читаем через map() на votes/<optionId>
     function loadResults(pollId){
-      // Снимаем старые подписки
+      // Снять старые подписки
       resultWatch.offFns.forEach(fn=>fn && fn());
       resultWatch = { pollId, offFns: [] };
 
@@ -679,22 +676,37 @@
         dqs('#r-title').textContent = meta?.title || '—';
       });
 
-      // Слушатели на options + submissions — пересчитываем при изменениях
-      const state = { options: {}, submissions: {} };
+      // Локальное состояние результатов
+      const state = {
+        options: {},     // { optId: label }
+        submissions: {}, // { code: { optId: number, ... } }
+        submittedFlag: {}// { code: true/false }
+      };
 
-      const offOpt = pollRef.get('options').map().on((o, k)=>{
+      // Следим за вариантами
+      pollRef.get('options').map().on((o, k)=>{
         if(!o) return;
-        state.options[o.id || k] = o.text || k;
+        const id = o.id || k;
+        state.options[id] = o.text || id;
         recompute(state);
       });
-      const offSub = pollRef.get('submissions').map().on((s, k)=>{
-        if(!s) return;
-        state.submissions[k] = s.votes || {};
-        recompute(state);
-      });
-
       resultWatch.offFns.push(()=> pollRef.get('options').map().off());
-      resultWatch.offFns.push(()=> pollRef.get('submissions').map().off());
+
+      // Подписка на анкеты (submitted + их votes/*)
+      const subsMap = pollRef.get('submissions');
+      subsMap.map().on((sub, code)=>{
+        if(!code) return;
+        state.submittedFlag[code] = !!(sub && sub.submitted);
+
+        const votesRef = subsMap.get(code).get('votes');
+        votesRef.map().on((val, optId)=>{
+          if(!state.submissions[code]) state.submissions[code] = {};
+          state.submissions[code][optId] = parseInt(val||0,10) || 0;
+          recompute(state);
+        });
+        resultWatch.offFns.push(()=> votesRef.map().off());
+      });
+      resultWatch.offFns.push(()=> subsMap.map().off());
 
       // Линки
       const base = location.origin + location.pathname;
@@ -705,24 +717,25 @@
     }
 
     function recompute(state){
-      // Список опций стабилен и отсортирован
       const ids = Object.keys(state.options).sort();
-      const labels = ids.map(id=>state.options[id]);
+      const labels = ids.map(id => state.options[id]);
 
-      // Суммируем по всем отправленным голосам (по коду)
-      const totals = {};
-      ids.forEach(id=>totals[id]=0);
+      // Суммируем по отправленным кодам
+      const totals = Object.fromEntries(ids.map(id=>[id, 0]));
       let votedCount = 0;
-      Object.values(state.submissions).forEach(vmap=>{
-        if(!vmap) return;
-        votedCount++;
+
+      Object.entries(state.submissions).forEach(([code, vmap])=>{
+        const anyVotes = vmap && Object.values(vmap).some(v => (parseInt(v||0,10)||0) > 0);
+        const counted = state.submittedFlag[code] || anyVotes;
+        if(counted) votedCount++;
+
         ids.forEach(id=>{
-          const v = parseInt(vmap[id]||0,10)||0;
+          const v = parseInt((vmap && vmap[id]) || 0, 10) || 0;
           totals[id] += v;
         });
       });
 
-      // Обновляем таблицу
+      // Таблица
       const tbody = dqs('#r-table tbody'); tbody.innerHTML = '';
       ids.forEach(id=>{
         const tr = document.createElement('tr');
@@ -732,7 +745,7 @@
       dqs('#r-voters').textContent = votedCount;
 
       // Диаграмма
-      const data = ids.map(id=>totals[id]);
+      const data = ids.map(id => totals[id]);
       if(!chart){
         chart = new Chart(chartCtx, {
           type: 'bar',
@@ -764,9 +777,7 @@
     }
 
     function copyText(text, toast='Скопировано'){
-      navigator.clipboard.writeText(text).then(()=>{
-        console.log(toast);
-      }).catch(()=>{
+      navigator.clipboard.writeText(text).then(()=>{}).catch(()=>{
         // fallback
         const ta=document.createElement('textarea');
         ta.value=text; document.body.appendChild(ta); ta.select();
@@ -798,7 +809,7 @@
         dqs('#r-poll').value = poll; 
         dqs('#open-existing-id').value = poll;
         dqs('#share-link').textContent = (location.origin + location.pathname + '?poll=' + poll);
-        dqs('#after-create').classList.add('hidden'); // пока не создавали сейчас
+        dqs('#after-create').classList.add('hidden');
       }
       if(code){ dqs('#v-code').value = code; }
 
@@ -806,7 +817,7 @@
       if(hash==='voter'){ openTab('voter'); }
       if(hash==='results'){ openTab('results'); if(poll) loadResults(poll); }
 
-      // Подсказка: быстрый вход голосующего, если оба параметра есть
+      // Быстрый вход голосующего
       const quick = params.get('autoconnect');
       if(poll && code && (hash==='voter' || quick==='1')){
         setTimeout(()=> connectAsVoter(), 200);
